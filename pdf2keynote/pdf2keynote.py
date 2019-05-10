@@ -8,6 +8,7 @@ import string
 import argparse
 import pdf2keynote
 import shutil
+import tempfile 
 
 from collections import defaultdict
 
@@ -154,6 +155,16 @@ def get_beamer_notes_for_page(pdf, page_number):
     return notes
 
 
+def create_pdf_for_page(pdf, page_number):
+    page_pdf = PDFDocument.alloc().init()    
+    page_pdf.insertPage_atIndex_(pdf.pageAtIndex_(page_number), 0)
+
+    f,pdf_path = tempfile.mkstemp(prefix="pdf2keynote", suffix=".pdf")
+    page_pdf.writeToFile_(pdf_path)
+
+    return pdf_path
+
+
 def get_pages(path_to_pdf):
     """
     split pdf into pages and notes
@@ -164,34 +175,15 @@ def get_pages(path_to_pdf):
     if not pdf:
         exit_usage("'%s' does not seem to be a pdf." % url.path(), 1)
 
-    # Split PDF
-    # TODO: USE PDFDocument instead of GhostScript dependency
-    base,_ = os.path.split(path_to_pdf)
-    temp_dir = base + "/.pdf_pages"
-    if not os.path.exists(temp_dir):
-        print("mkdir", temp_dir)
-        os.mkdir(temp_dir)
-
-    os.system("gs -sDEVICE=pdfwrite -dNOPAUSE -dQUIET -dBATCH -sOutputFile={}/%d.pdf {}".format(temp_dir, path_to_pdf))
-    files = os.listdir(temp_dir)
-    natural_sort(files)
-
     pages = []
     print("Slides:")
     for page_number in range(pdf.pageCount()):
         notes = get_beamer_notes_for_page(pdf, page_number)
-        pdf_path = "{}/{}.pdf".format(temp_dir, page_number + 1)
+        pdf_path = create_pdf_for_page(pdf, page_number)
         print((page_number, notes, pdf_path))
         pages.append((pdf_path, notes))
 
     return pages
-
-
-def clean_pages(path_to_pdf):
-    base,_ = os.path.split(path_to_pdf)
-    temp_dir = base + "/.pdf_pages"
-    # if os.path.exists(temp_dir):
-    #     shutil.rmtree(temp_dir)
 
 
 def pdf_to_keynote(path_to_pdf, path_to_keynote=None):
@@ -208,16 +200,17 @@ def pdf_to_keynote(path_to_pdf, path_to_keynote=None):
         create_keynote_document()
 
         slide = 1
-        for (pdf,notes) in pages:
+        for (pdf_path,notes) in pages:
             if slide > 1:
                 create_empty_slide()
-            insert_image(slide, os.path.abspath(pdf))
+            insert_image(slide, pdf_path)
             insert_note(slide, notes)
+            os.remove(pdf_path)
             slide += 1
 
-        save_keynote_document(path_to_keynote)
+        # TODO select first slide
 
-    clean_pages(path_to_pdf)
+        save_keynote_document(path_to_keynote)
 
 
 def main():
