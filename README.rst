@@ -21,4 +21,15 @@ Usage
 
 example::
 
-	pdf2keynote path_to_pdf
+	pdf2keynote [-o path_to_keynote] path_to_pdf
+
+
+If the presentation is generated using Beamer with::
+
+	\setbeameroption{show notes on second screen=right}
+
+then Beamer notes commands::
+
+	\note{comments}
+
+are extracted as Keynote's presenter notes
