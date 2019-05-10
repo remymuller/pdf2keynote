@@ -11,7 +11,7 @@ from setuptools import setup, find_packages
 setup(name='pdf2keynote', # pyton module name
       version='1.0',
       description='python module for converting PDF files to Apple Keynote',
-      #url='https://',
+      url='https://github.com/remymuller/pdf2keynote',
       author='Remy Muller',
       author_email='muller.remy@gmail.com',
       license='MIT',

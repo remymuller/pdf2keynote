@@ -11,7 +11,3 @@ pdf:
 keynote: pdf	
 	echo "building keynote..."
 	pdf2keynote pdf2keynote.pdf
-
-
-
-
