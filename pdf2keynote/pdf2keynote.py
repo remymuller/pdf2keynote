@@ -34,6 +34,7 @@ from Quartz import (
 def escape(notes):
     return '"{}"'.format(notes)
 
+
 # Keynote applescript wrappers
 def insert_note(slide, notes):
     print("with notes:", notes)
@@ -54,9 +55,8 @@ def delete_slide(index):
     do_apple_script('delete_slide', index)
 
 
-# TODO: add w,h
-def create_keynote_document():
-    do_apple_script('create_keynote_document')
+def create_keynote_document(width=1024, height=768):
+    do_apple_script('create_keynote_document', width, height)
 
 
 def save_keynote_document(path):
@@ -73,62 +73,9 @@ def do_apple_script(command, *args):
     args = " ".join([str(arg) for arg in args])
     os.system("osascript {} {}".format(path, args))
 
-def natural_sort(list, key=lambda s:s):
-    """
-    Sort the list into natural alphanumeric order.
-    """
-    def get_alphanum_key_func(key):
-        convert = lambda text: int(text) if text.isdigit() else text 
-        return lambda s: [convert(c) for c in re.split('([0-9]+)', key(s))]
-    sort_key = get_alphanum_key_func(key)
-    list.sort(key=sort_key)
-
-
-# def get_pages(path_to_pdf):
-#     """
-#     split pdf into pages and notes
-#     """
-#     base,_ = os.path.split(path_to_pdf)
-#     temp_dir = base + "/.pdf_pages"
-#     if not os.path.exists(temp_dir):
-#         print("mkdir", temp_dir)
-#         os.mkdir(temp_dir)
-
-#     os.system("gs -sDEVICE=pdfwrite -dNOPAUSE -dQUIET -dBATCH -sOutputFile={}/%d.pdf {}".format(temp_dir, path_to_pdf))
-
-#     files = os.listdir(temp_dir)
-#     natural_sort(files)
-
-#     pages = [(temp_dir+'/'+file, "notes place holder") for file in files]
-#     return pages
 
 def lines(selection):
     return [line.string() for line in selection.selectionsByLine() or []]
-
-# def get_beamer_notes(pdf):
-#     beamer_notes = defaultdict(list)
-#     title_page = pdf.pageAtIndex_(0)
-#     (x, y), (w, h) = title_page.boundsForBox_(kPDFDisplayBoxMediaBox)
-
-#     if w/h > 7/3: # likely to be a two screens pdf
-#         # heuristic to guess template of note slide
-#         w /= 2
-#         title = lines(title_page.selectionForRect_(((x, y), (w, h))))
-#         miniature = lines(title_page.selectionForRect_(((x+w+3*w/4, y+3*h/4), (w/4, h/4))))
-#         header = miniature and all( # miniature do not have navigation
-#             line in title
-#             for line in miniature
-#         )
-    
-#         page_count = pdf.pageCount()
-#         for page_number in range(page_count):
-#             page = pdf.pageAtIndex_(page_number)
-#             (x, y), (w, h) = page.boundsForBox_(kPDFDisplayBoxMediaBox)
-#             w /= 2
-#             page.setBounds_forBox_(((x, y), (w, h)), kPDFDisplayBoxCropBox)
-#             selection = page.selectionForRect_(((x+w, y), (w, 3*h/4 if header else h)))
-#             beamer_notes[page_number].append('\n'.join(lines(selection)))
-#     return beamer_notes
 
 
 def get_beamer_notes_for_page(pdf, page_number):
@@ -165,26 +112,19 @@ def create_pdf_for_page(pdf, page_number):
     return pdf_path
 
 
-def get_pages(path_to_pdf):
+def get_pdf_dimensions(pdf):
     """
-    split pdf into pages and notes
     """
+    title_page = pdf.pageAtIndex_(0)
+    (x, y), (w, h) = title_page.boundsForBox_(kPDFDisplayBoxMediaBox)
+    if w/h > 7/3: # likely to be a two screens pdf
+        w = w//2
 
-    url = NSURL.fileURLWithPath_(_s(path_to_pdf))
-    pdf = PDFDocument.alloc().initWithURL_(url)
-    if not pdf:
-        exit_usage("'%s' does not seem to be a pdf." % url.path(), 1)
-
-    pages = []
-    print("Slides:")
-    for page_number in range(pdf.pageCount()):
-        notes = get_beamer_notes_for_page(pdf, page_number)
-        pdf_path = create_pdf_for_page(pdf, page_number)
-        print((page_number, notes, pdf_path))
-        pages.append((pdf_path, notes))
-
-    return pages
-
+    # rescale to normalize height to 768px
+    w = (w / h) * 768
+    h = (h / h) * 768
+    return (w,h)    # return (1024,768)
+    
 
 def pdf_to_keynote(path_to_pdf, path_to_keynote=None):
     """
@@ -195,18 +135,30 @@ def pdf_to_keynote(path_to_pdf, path_to_keynote=None):
         root,ext = os.path.splitext(path_to_pdf)
         path_to_keynote = root + ".key"
 
-    pages = get_pages(path_to_pdf)
-    if pages:
-        create_keynote_document()
+    url = NSURL.fileURLWithPath_(_s(path_to_pdf))
+    pdf = PDFDocument.alloc().initWithURL_(url)
+    if not pdf:
+        exit_usage("'%s' does not seem to be a pdf." % url.path(), 1)
 
-        slide = 1
-        for (pdf_path,notes) in pages:
+    if pdf.pageCount() > 0:
+        w,h = get_pdf_dimensions(pdf)
+        print(w,h)
+
+        create_keynote_document(w,h)
+
+        for page_number in range(pdf.pageCount()):
+            slide = page_number + 1
             if slide > 1:
                 create_empty_slide()
+
+            pdf_path = create_pdf_for_page(pdf, page_number)
             insert_image(slide, pdf_path)
-            insert_note(slide, notes)
             os.remove(pdf_path)
-            slide += 1
+
+            notes = get_beamer_notes_for_page(pdf, page_number)
+            insert_note(slide, notes)
+
+            print((slide, notes, pdf_path))
 
         # TODO select first slide
 
@@ -232,8 +184,4 @@ def main():
     path_to_pdf = args.pdf
     path_to_keynote = args.output
     pdf_to_keynote(path_to_pdf, path_to_keynote)
-
-
-# if __name__ == "__main__":
-#     pdf_to_keynote(pdf2keynote.__path__[0] + '../test/dafx19-opa-presentation.pdf')
 
