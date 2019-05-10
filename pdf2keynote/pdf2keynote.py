@@ -123,7 +123,8 @@ def get_pdf_dimensions(pdf):
     # rescale to normalize height to 768px
     w = (w / h) * 768
     h = (h / h) * 768
-    return (w,h)    # return (1024,768)
+    return (w,h)    
+    # return (1024,768)
     
 
 def pdf_to_keynote(path_to_pdf, path_to_keynote=None):
