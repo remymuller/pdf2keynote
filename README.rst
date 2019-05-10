@@ -38,7 +38,7 @@ Credits
 -------
 Thanks to the following projects to get me started
 	
-	- `Presentation App <http://iihm.imag.fr/blanch/software/osx-presentation/>`_
-	- `md2key <https://github.com/k0kubun/md2key>`_
-	- `PDF to Keynote <https://www.cs.hmc.edu/~oneill/freesoftware/pdftokeynote.html>`_
-	- `iWork Automation <http://iworkautomation.com>`_
+- `Presentation App <http://iihm.imag.fr/blanch/software/osx-presentation/>`_
+- `md2key <https://github.com/k0kubun/md2key>`_
+- `PDF to Keynote <https://www.cs.hmc.edu/~oneill/freesoftware/pdftokeynote.html>`_
+- `iWork Automation <http://iworkautomation.com>`_
