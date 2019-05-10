@@ -32,4 +32,4 @@ then Beamer notes commands::
 
 	\note{comments}
 
-are extracted as Keynote's presenter notes. See the `Demo examples <https://github.com/remymuller/pdf2keynote/blob/master/test/pdf2keynote.pdf>`_
+are extracted as Keynote's presenter notes. See the `Demo example <https://github.com/remymuller/pdf2keynote/blob/master/test/pdf2keynote.pdf>`_ and its `source <https://github.com/remymuller/pdf2keynote/blob/master/test/pdf2keynote.tex>`_
