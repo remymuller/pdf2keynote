@@ -20,6 +20,7 @@ def insert_note(slide, notes):
 
 
 def insert_image(slide, image):
+    print("add image {}".format(image))
     do_apple_script('insert_image', slide, image)
 
 
@@ -101,7 +102,8 @@ def pdf_to_keynote(path_to_pdf, path_to_keynote=None):
     if pages:
         slide = 1
         for (pdf,notes) in pages:
-            create_empty_slide()
+            if slide > 1:
+                create_empty_slide()
             insert_image(slide, os.path.abspath(pdf))
             insert_note(slide, notes)
             slide += 1
