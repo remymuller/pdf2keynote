@@ -7,6 +7,27 @@ import sys
 import string
 import argparse
 import pdf2keynote
+import shutil
+
+from collections import defaultdict
+
+# import OSX stuff
+from objc import nil, NO, YES
+from Foundation import NSURL, NSString
+
+if sys.version_info[0] == 3:
+    _s = NSString.stringWithString_
+else:
+    _s = NSString.stringWithUTF8String_
+
+from Quartz import (
+    PDFDocument, PDFAnnotationText, PDFAnnotationLink,
+    PDFActionNamed,
+    kPDFActionNamedNextPage, kPDFActionNamedPreviousPage,
+    kPDFActionNamedFirstPage, kPDFActionNamedLastPage,
+    kPDFActionNamedGoBack, kPDFActionNamedGoForward,
+    kPDFDisplayBoxMediaBox, kPDFDisplayBoxCropBox,
+)
 
 
 def escape(notes):
@@ -62,10 +83,89 @@ def natural_sort(list, key=lambda s:s):
     list.sort(key=sort_key)
 
 
+# def get_pages(path_to_pdf):
+#     """
+#     split pdf into pages and notes
+#     """
+#     base,_ = os.path.split(path_to_pdf)
+#     temp_dir = base + "/.pdf_pages"
+#     if not os.path.exists(temp_dir):
+#         print("mkdir", temp_dir)
+#         os.mkdir(temp_dir)
+
+#     os.system("gs -sDEVICE=pdfwrite -dNOPAUSE -dQUIET -dBATCH -sOutputFile={}/%d.pdf {}".format(temp_dir, path_to_pdf))
+
+#     files = os.listdir(temp_dir)
+#     natural_sort(files)
+
+#     pages = [(temp_dir+'/'+file, "notes place holder") for file in files]
+#     return pages
+
+def lines(selection):
+    return [line.string() for line in selection.selectionsByLine() or []]
+
+# def get_beamer_notes(pdf):
+#     beamer_notes = defaultdict(list)
+#     title_page = pdf.pageAtIndex_(0)
+#     (x, y), (w, h) = title_page.boundsForBox_(kPDFDisplayBoxMediaBox)
+
+#     if w/h > 7/3: # likely to be a two screens pdf
+#         # heuristic to guess template of note slide
+#         w /= 2
+#         title = lines(title_page.selectionForRect_(((x, y), (w, h))))
+#         miniature = lines(title_page.selectionForRect_(((x+w+3*w/4, y+3*h/4), (w/4, h/4))))
+#         header = miniature and all( # miniature do not have navigation
+#             line in title
+#             for line in miniature
+#         )
+    
+#         page_count = pdf.pageCount()
+#         for page_number in range(page_count):
+#             page = pdf.pageAtIndex_(page_number)
+#             (x, y), (w, h) = page.boundsForBox_(kPDFDisplayBoxMediaBox)
+#             w /= 2
+#             page.setBounds_forBox_(((x, y), (w, h)), kPDFDisplayBoxCropBox)
+#             selection = page.selectionForRect_(((x+w, y), (w, 3*h/4 if header else h)))
+#             beamer_notes[page_number].append('\n'.join(lines(selection)))
+#     return beamer_notes
+
+
+def get_beamer_notes_for_page(pdf, page_number):
+    title_page = pdf.pageAtIndex_(0)
+    (x, y), (w, h) = title_page.boundsForBox_(kPDFDisplayBoxMediaBox)
+
+    notes = ""
+    if w/h > 7/3: # likely to be a two screens pdf
+        # heuristic to guess template of note slide
+        w /= 2
+        title = lines(title_page.selectionForRect_(((x, y), (w, h))))
+        miniature = lines(title_page.selectionForRect_(((x+w+3*w/4, y+3*h/4), (w/4, h/4))))
+        header = miniature and all( # miniature do not have navigation
+            line in title
+            for line in miniature
+        )
+    
+        page = pdf.pageAtIndex_(page_number)
+        (x, y), (w, h) = page.boundsForBox_(kPDFDisplayBoxMediaBox)
+        w /= 2
+        page.setBounds_forBox_(((x, y), (w, h)), kPDFDisplayBoxCropBox)
+        selection = page.selectionForRect_(((x+w, y), (w, 3*h/4 if header else h)))
+        notes = '\n'.join(lines(selection))
+    return notes
+
+
 def get_pages(path_to_pdf):
     """
     split pdf into pages and notes
     """
+
+    url = NSURL.fileURLWithPath_(_s(path_to_pdf))
+    pdf = PDFDocument.alloc().initWithURL_(url)
+    if not pdf:
+        exit_usage("'%s' does not seem to be a pdf." % url.path(), 1)
+
+    # Split PDF
+    # TODO: USE PDFDocument instead of GhostScript dependency
     base,_ = os.path.split(path_to_pdf)
     temp_dir = base + "/.pdf_pages"
     if not os.path.exists(temp_dir):
@@ -73,16 +173,25 @@ def get_pages(path_to_pdf):
         os.mkdir(temp_dir)
 
     os.system("gs -sDEVICE=pdfwrite -dNOPAUSE -dQUIET -dBATCH -sOutputFile={}/%d.pdf {}".format(temp_dir, path_to_pdf))
-
     files = os.listdir(temp_dir)
     natural_sort(files)
 
-    pages = [(temp_dir+'/'+file, "notes place holder") for file in files]
+    pages = []
+    print("Slides:")
+    for page_number in range(pdf.pageCount()):
+        notes = get_beamer_notes_for_page(pdf, page_number)
+        pdf_path = "{}/{}.pdf".format(temp_dir, page_number + 1)
+        print((page_number, notes, pdf_path))
+        pages.append((pdf_path, notes))
+
     return pages
 
 
-def clean_pages():
-    pass
+def clean_pages(path_to_pdf):
+    base,_ = os.path.split(path_to_pdf)
+    temp_dir = base + "/.pdf_pages"
+    # if os.path.exists(temp_dir):
+    #     shutil.rmtree(temp_dir)
 
 
 def pdf_to_keynote(path_to_pdf, path_to_keynote=None):
@@ -95,11 +204,9 @@ def pdf_to_keynote(path_to_pdf, path_to_keynote=None):
         path_to_keynote = root + ".key"
 
     pages = get_pages(path_to_pdf)
-    # assert(len(pages) > 0)
-
-    create_keynote_document()
-
     if pages:
+        create_keynote_document()
+
         slide = 1
         for (pdf,notes) in pages:
             if slide > 1:
@@ -108,9 +215,9 @@ def pdf_to_keynote(path_to_pdf, path_to_keynote=None):
             insert_note(slide, notes)
             slide += 1
 
-    save_keynote_document(path_to_keynote)
+        save_keynote_document(path_to_keynote)
 
-    clean_pages()
+    clean_pages(path_to_pdf)
 
 
 def main():

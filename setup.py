@@ -17,7 +17,7 @@ setup(name='pdf2keynote', # pyton module name
       license='MIT',
       packages=find_packages(),
       install_requires=[
-      # list python module dependencies here
+        'pyobjc' # to handle PDF
       ],
   	  entry_points={
           'console_scripts': [
