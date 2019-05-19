@@ -47,6 +47,16 @@ def insert_image(slide, image):
     do_apple_script('insert_image', slide, image)
 
 
+def insert_sound(slide, sound, x, y):
+    print("add sound {} at (%f,%f)".format(sound,x,y))
+    do_apple_script('insert_sound', slide, sound, int(x), int(y))
+
+
+def insert_movie(slide, sound, x, y):
+    print("add sound {} at (%f,%f)".format(sound,x,y))
+    do_apple_script('insert_movie', slide, sound, int(x), int(y))
+
+
 def create_empty_slide():
     do_apple_script('create_empty_slide')
 
@@ -71,7 +81,9 @@ def apple_script_path(command):
 def do_apple_script(command, *args):
     path = apple_script_path(command)
     args = " ".join([str(arg) for arg in args])
-    os.system("osascript {} {}".format(path, args))
+    cmdline = "osascript {} {}".format(path, args)
+    # print(cmdline)
+    os.system(cmdline)
 
 
 def lines(selection):
@@ -111,6 +123,10 @@ def create_pdf_for_page(pdf, page_number):
 
     return pdf_path
 
+def get_pdf_scale(pdf):
+    title_page = pdf.pageAtIndex_(0)
+    (x, y), (w, h) = title_page.boundsForBox_(kPDFDisplayBoxMediaBox)
+    return 768 / h
 
 def get_pdf_dimensions(pdf):
     """
@@ -125,7 +141,42 @@ def get_pdf_dimensions(pdf):
     h = (h / h) * 768
     return (w,h)    
     # return (1024,768)
+
+def is_audio(path):
+    _,ext = os.path.splitext(path)
+    return ext in [".wav", ".aif", ".aiff", ".mp3", ".flac"]
+
+def is_video(path):
+    _,ext = os.path.splitext(path)
+    return ext in [".mov", ".mpg", ".mpeg", ".m4v"]
     
+def process_annotations_for_page(pdf, page_number):
+    scale = get_pdf_scale(pdf)
+
+    page = pdf.pageAtIndex_(page_number)
+    annotations = page.annotations() or []
+    for annotation in annotations:
+        annotation_type = type(annotation)
+        if annotation_type == PDFAnnotationText:
+            print("PDFAnnotationText at page %d" % page_number, annotation.contents())
+            # annotation.setShouldDisplay_(False)
+            # pdf_notes[page_number].append(annotation.contents().replace('\r', '\n'))
+        elif annotation_type == PDFAnnotationLink:
+            print("PDFAnnotationLink at page %d:" % page_number, annotation.URL())
+            url = annotation.URL()        
+            if url:    
+                bounds = annotation.bounds()
+                print(bounds)
+                P = bounds.origin
+                slide = page_number + 1
+                path = os.path.abspath(url.path())
+                if is_audio(path):
+                    insert_sound(slide, path, P.x*scale, P.y*scale)
+                elif is_video(path):
+                    insert_movie(slide, path, P.x*scale, P.y*scale)
+        #elif annotation_type == PDFAnnotationMovie:
+        #elif annotation_type == PDFAnnotationWidget:
+    return []
 
 def pdf_to_keynote(path_to_pdf, path_to_keynote=None):
     """
@@ -158,6 +209,8 @@ def pdf_to_keynote(path_to_pdf, path_to_keynote=None):
 
             notes = get_beamer_notes_for_page(pdf, page_number)
             insert_note(slide, notes)
+
+            process_annotations_for_page(pdf, page_number)
 
             print((slide, notes, pdf_path))
 
