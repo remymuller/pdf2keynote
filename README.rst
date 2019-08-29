@@ -47,7 +47,10 @@ are extracted as Keynote's presenter notes.
 
 and media references like ::
 
-	\href{path/to/audio/or/movie}{ Alternate Text to be displayed. }
+	\href{path/to/audio/or/movie}
+	{ 
+		Alternate Text to be displayed. 
+	}
 	
 are extracted as playable sounds or movies
 
