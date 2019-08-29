@@ -25,7 +25,7 @@ Usage
 
 example::
 
-	pdf2keynote [-o path_to_keynote] path_to_pdf
+	pdf2keynote [-o path_to_keynote_presentation] path_to_pdf
 
 
 If the presentation is generated using Beamer with::
