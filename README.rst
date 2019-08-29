@@ -6,18 +6,18 @@ automate the conversion from PDF to Apple's Keynote
 Install 
 -------
 
-install from pip::
-
-	pip install pdf2keynote
+..install from pip::
+..
+..	pip install pdf2keynote
 
 install from git::
 
 	pip install git+https://github.com/remymuller/pdf2keynote.git
 
-install for development::
-
-	git clone https://github.com/remymuller/pdf2keynote.git
-	pip install -e pdf2keynote/
+..install for development::
+..
+..	git clone https://github.com/remymuller/pdf2keynote.git
+..	pip install -e pdf2keynote/
 
 
 Usage
