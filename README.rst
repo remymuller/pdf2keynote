@@ -1,7 +1,7 @@
 pdf2keynote
 ===========
 
-automate the conversion from PDF to Apple's Keynote
+Automate the conversion of PDF slides to Apple's Keynote format.
 
 Install 
 -------
