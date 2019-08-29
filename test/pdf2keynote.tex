@@ -15,7 +15,7 @@
 \usepackage{hyperref}
 
 %\setbeamertemplate{note page}[plain] % to simplify the task of extracting notes
-%\setbeameroption{show notes on second screen=right}
+\setbeameroption{show notes on second screen=right}
 
 \title{PDF to Keynote}
 \subtitle{and using Beamer to generate Keynote presentations}
@@ -61,6 +61,8 @@ Then the text notes from the second screen (the right half of the pdf page) are 
     Just an empty slide without notes
 \end{frame}
 
+%----------------------------------------------------------------------------------
+
 \begin{frame}[fragile]
     \frametitle{A Frame with itemized notes}    
     One can also use rich text for comments, for example
@@ -84,19 +86,24 @@ Then the text notes from the second screen (the right half of the pdf page) are 
     }
 \end{frame}
 
-\begin{frame}
-	\frametitle{Audio Slide}
-	\href{vibra.wav}{\beamergotobutton{Vibra Sound}}
-	%\movie[autostart]{An movie/audio file}{vibra.wav}
-	%\sound[autostart,encoding=Signed]{An audio file}{vibra.wav}
-%	\href{run:vibra.wav}{Run:Vibra}
-	%\hyperlinksound{An audio file}{file:///Users/muller/projects/PhD/Python/pdf2keynote/test/vibra.wav}
-\end{frame}
+%----------------------------------------------------------------------------------
 
 \begin{frame}
-	\frametitle{Video Slide}
-	\href{Balisurf.m4v}{\beamergotobutton{Bali Surf}}
-	%\movie[autostart]{An movie/audio file}{vibra.wav}
+\frametitle{Audio Slide}
+\begin{center}
+	% TODO find a way to pass options like, autoplay...
+	\href{Hello.mp3}{\beamergotobutton{Sound}}
+\end{center}
+\end{frame}
+
+%----------------------------------------------------------------------------------
+
+\begin{frame}
+\frametitle{Video Frame}
+\begin{center}
+	% TODO find a way to pass options like width, height, loop...
+	\href{Video.mov}{\beamergotobutton{Video}}	
+\end{center}
 \end{frame}
 
 %----------------------------------------------------------------------------------

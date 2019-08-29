@@ -170,6 +170,7 @@ def process_annotations_for_page(pdf, page_number):
                 P = bounds.origin
                 slide = page_number + 1
                 path = os.path.abspath(url.path())
+                # TODO: test if annotation is on second screen and duplicates...
                 if is_audio(path):
                     insert_sound(slide, path, P.x*scale, P.y*scale)
                 elif is_video(path):
