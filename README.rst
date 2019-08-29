@@ -28,6 +28,9 @@ example::
 	pdf2keynote [-o path_to_keynote_presentation] path_to_pdf
 
 
+PDFs generated using LaTeX+Beamer
+---------------------------------
+
 If the presentation is generated using Beamer with::
 
 	\setbeameroption{show notes on second screen=right}
