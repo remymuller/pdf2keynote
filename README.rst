@@ -35,7 +35,7 @@ If the presentation is generated using Beamer with::
 
 	\setbeameroption{show notes on second screen=right}
 
-then Beamer notes commands like::
+then Beamer note commands like::
 
 	\note 
 	{
