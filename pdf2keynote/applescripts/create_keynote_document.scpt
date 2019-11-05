@@ -5,6 +5,6 @@ on run argv
         activate
         set thisDocument to ¬
             make new document with properties ¬
-                {document theme:theme "White", width:w, height:h}
+                {document theme:theme id "Application/White/Standard", width:w, height:h}
     end tell
 end run
