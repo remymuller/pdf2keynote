@@ -20,7 +20,9 @@ setup(name='pdf2keynote', # pyton module name
         # 'applescript',
         'pyobjc' # to handle PDF
       ],
-  	  entry_points={
+      setup_requires=['setuptools_scm'],
+      include_package_data=True,
+      entry_points={
           'console_scripts': [
               'pdf2keynote = pdf2keynote.pdf2keynote:main', 
           ]
