@@ -67,8 +67,8 @@ def create_empty_slide():
     do_apple_script("create_empty_slide")
 
 
-def delete_slide(index):
-    do_apple_script("delete_slide", index)
+# def delete_slide(index):
+#     do_apple_script("delete_slide", index)
 
 
 def create_keynote_document(width=1024, height=768):
