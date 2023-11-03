@@ -247,7 +247,7 @@ def pdf_to_keynote(path_to_pdf, path_to_keynote=None):
 
         # TODO select first slide
 
-        save_keynote_document(path_to_keynote)
+    save_keynote_document(path_to_keynote)
 
 
 def main():
