@@ -110,29 +110,60 @@ def has_notes(page: PDFPage) -> bool:
 
     return w / h > 21/9 # = 7/3 # Usual aspect ratios are 4/3 or 16/9, therefore 2 * 4/3 = 8/3 and 32/9 are the ratios for double-slides.
 
-def exclude_notes(page: PDFPage, origin=(0,0)):
-    "Crops page to exclude notes. `origin` is the origin of the slide."
-    _, (w, h) = page.boundsForBox_(kPDFDisplayBoxMediaBox)
-    page.setBounds_forBox_((origin, (w/2, h)), kPDFDisplayBoxCropBox)
+def miniature_bounds(bounds: Bounds) -> Bounds:
+    "Returns the bounds of a miniature inside the `bounds`"
+    (x, y), (w, h) = bounds
+    return (x + 3/4 * w, y + 3/4 * h), (w / 4, h / 4)
 
-def get_beamer_notes_for_page(page: PDFPage):
+def side_bounds(page: PDFPage) -> tuple[Bounds, Bounds]:
     (x, y), (w, h) = page.boundsForBox_(kPDFDisplayBoxMediaBox)
+    slide_dimensions = (w/2, h)
+
+    return ((x, y), slide_dimensions), ((x + w/2, y), slide_dimensions)
+
+def has_header(page: PDFPage, left_side_bounds: Bounds, right_side_bounds: Bounds):
+    content = lines(page.selectionForRect_(left_side_bounds))
+    miniature = lines(page.selectionForRect_(miniature_bounds(right_side_bounds)))
     
-    # heuristic to guess template of note slide
-    w /= 2
-    title = lines(page.selectionForRect_(((x, y), (w, h))))
-    miniature = lines(
-        page.selectionForRect_(
-            ((x + w + 3 * w / 4, y + 3 * h / 4), (w / 4, h / 4))
-        )
-    )
-    header = miniature and all(  # miniature do not have navigation
-        line in title for line in miniature
+    return bool(miniature) and all(  # miniature do not have navigation
+        line in content for line in miniature
     )
 
-    selection = page.selectionForRect_(
-        ((x + w, y), (w, 3 * h / 4 if header else h))
-    )
+def selections_match(selection: PDFSelection, other: PDFSelection):
+    if other_lines := lines(other):
+        return all(line in lines(selection) for line in other_lines)
+    else:
+        return False
+    
+def bounds_without_header(bounds: Bounds) -> Bounds:
+    origin, (w, h) = bounds
+    return (origin, (w, 3/4 * h))
+
+def page_bounds(page: PDFPage) -> tuple[Bounds, Bounds]:
+    """
+     Returns the bounds of the notes. 
+     If the notes contain a miniature in the top right. 
+    """
+    left_side_bounds, right_side_bounds = side_bounds(page)
+
+    # check of notes with miniature are on the right
+    content = page.selectionForRect_(left_side_bounds)
+    miniature = page.selectionForRect_(miniature_bounds(right_side_bounds))
+    if selections_match(content, miniature):
+        return left_side_bounds, bounds_without_header(right_side_bounds)
+
+    # check of notes with miniature are on the left
+    content = page.selectionForRect_(right_side_bounds)
+    miniature = page.selectionForRect_(miniature_bounds(left_side_bounds))
+    if selections_match(content, miniature):
+        return right_side_bounds, bounds_without_header(left_side_bounds)
+    
+    # no miniature
+    return left_side_bounds, right_side_bounds
+
+
+def get_beamer_notes_for_page(page: PDFPage, note_bounds): 
+    selection = page.selectionForRect_(note_bounds)
     return "\n".join(lines(selection))
 
 
@@ -205,6 +236,9 @@ def process_annotations_for_page(pdf, page_number):
         # elif annotation_type == PDFAnnotationWidget:
     return []
 
+def crop_content(page: PDFPage, bounds: Bounds):
+    "Crops page to exclude notes."
+    page.setBounds_forBox_(bounds, kPDFDisplayBoxCropBox)
 
 def pdf_to_keynote(path_to_pdf, path_to_keynote=None):
     """"""
@@ -221,27 +255,36 @@ def pdf_to_keynote(path_to_pdf, path_to_keynote=None):
 
     if pdf.pageCount() <= 0:
         exit_usage("'{url.path()}' has no pages.", 1)
+    title_page = pdf.pageAtIndex_(0)
 
     w, h = get_pdf_dimensions(pdf)
     print(w, h)
 
     create_keynote_document(w, h)
 
+    notes_location = None # TODO implement override.
+    if not notes_location:
+        content_bounds, note_bounds = page_bounds(title_page)
+    elif notes_location == "right":
+        content_bounds, note_bounds = side_bounds(title_page)
+    elif notes_location == "left":
+        note_bounds, content_bounds = side_bounds(title_page)
+
     for page_number in range(pdf.pageCount()):
         slide = page_number + 1
         if slide > 1:
             create_empty_slide()
 
-        page = pdf.pageAtIndex_(page_number)
+        page: PDFPage = pdf.pageAtIndex_(page_number)
+
+        if has_notes(page):
+            notes = get_beamer_notes_for_page(page, note_bounds)
+            crop_content(page, content_bounds)
+            insert_note(slide, notes)
 
         pdf_path = create_pdf_for_page(page)
         insert_image(slide, pdf_path)
         os.remove(pdf_path)
-
-        if has_notes(page):
-            notes = get_beamer_notes_for_page(page)
-            exclude_notes(page)
-            insert_note(slide, notes)
 
         process_annotations_for_page(pdf, page_number)
 
