@@ -108,31 +108,30 @@ def has_notes(page: PDFPage) -> bool:
 
     return w / h > 21/9 # = 7/3 # Usual aspect ratios are 4/3 or 16/9, therefore 2 * 4/3 = 8/3 and 32/9 are the ratios for double-slides.
 
+def exclude_notes(page: PDFPage, origin=(0,0)):
+    "Crops page to exclude notes. `origin` is the origin of the slide."
+    _, (w, h) = page.boundsForBox_(kPDFDisplayBoxMediaBox)
+    page.setBounds_forBox_((origin, (w/2, h)), kPDFDisplayBoxCropBox)
+
 def get_beamer_notes_for_page(page: PDFPage):
     (x, y), (w, h) = page.boundsForBox_(kPDFDisplayBoxMediaBox)
+    
+    # heuristic to guess template of note slide
+    w /= 2
+    title = lines(page.selectionForRect_(((x, y), (w, h))))
+    miniature = lines(
+        page.selectionForRect_(
+            ((x + w + 3 * w / 4, y + 3 * h / 4), (w / 4, h / 4))
+        )
+    )
+    header = miniature and all(  # miniature do not have navigation
+        line in title for line in miniature
+    )
 
-    notes = ""
-    if has_notes(page): 
-        # heuristic to guess template of note slide
-        w /= 2
-        title = lines(page.selectionForRect_(((x, y), (w, h))))
-        miniature = lines(
-            page.selectionForRect_(
-                ((x + w + 3 * w / 4, y + 3 * h / 4), (w / 4, h / 4))
-            )
-        )
-        header = miniature and all(  # miniature do not have navigation
-            line in title for line in miniature
-        )
-
-        (x, y), (w, h) = page.boundsForBox_(kPDFDisplayBoxMediaBox)
-        w /= 2
-        page.setBounds_forBox_(((x, y), (w, h)), kPDFDisplayBoxCropBox)
-        selection = page.selectionForRect_(
-            ((x + w, y), (w, 3 * h / 4 if header else h))
-        )
-        notes = "\n".join(lines(selection))
-    return notes
+    selection = page.selectionForRect_(
+        ((x + w, y), (w, 3 * h / 4 if header else h))
+    )
+    return "\n".join(lines(selection))
 
 
 def create_pdf_for_page(page: PDFPage):
@@ -237,8 +236,10 @@ def pdf_to_keynote(path_to_pdf, path_to_keynote=None):
         insert_image(slide, pdf_path)
         os.remove(pdf_path)
 
-        notes = get_beamer_notes_for_page(page)
-        insert_note(slide, notes)
+        if has_notes(page):
+            notes = get_beamer_notes_for_page(page)
+            exclude_notes(page)
+            insert_note(slide, notes)
 
         process_annotations_for_page(pdf, page_number)
 
