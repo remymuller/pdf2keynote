@@ -23,6 +23,8 @@ else:
 
 from Quartz import (
     PDFDocument,
+    PDFPage,
+    PDFSelection,
     PDFAnnotationText,
     PDFAnnotationLink,
     PDFActionNamed,
@@ -97,27 +99,25 @@ def do_apple_script(command, *args):
 def lines(selection):
     return [line.string() for line in selection.selectionsByLine() or []]
 
-def has_notes(pdf: PDFDocument) -> bool:
+def has_notes(page: PDFPage) -> bool:
     """
      Checks if the PDF is likely to include a note slide. 
      Only works between 21:18 and 21:9 format slides. So does not work for 1:1 or portait mode slides!
     """
-    title_page = pdf.pageAtIndex_(0)
-    (x, y), (w, h) = title_page.boundsForBox_(kPDFDisplayBoxMediaBox)
+    _, (w, h) = page.boundsForBox_(kPDFDisplayBoxMediaBox)
 
     return w / h > 21/9 # = 7/3 # Usual aspect ratios are 4/3 or 16/9, therefore 2 * 4/3 = 8/3 and 32/9 are the ratios for double-slides.
 
-def get_beamer_notes_for_page(pdf, page_number):
-    title_page = pdf.pageAtIndex_(0)
-    (x, y), (w, h) = title_page.boundsForBox_(kPDFDisplayBoxMediaBox)
+def get_beamer_notes_for_page(page: PDFPage):
+    (x, y), (w, h) = page.boundsForBox_(kPDFDisplayBoxMediaBox)
 
     notes = ""
-    if has_notes(pdf): 
+    if has_notes(page): 
         # heuristic to guess template of note slide
         w /= 2
-        title = lines(title_page.selectionForRect_(((x, y), (w, h))))
+        title = lines(page.selectionForRect_(((x, y), (w, h))))
         miniature = lines(
-            title_page.selectionForRect_(
+            page.selectionForRect_(
                 ((x + w + 3 * w / 4, y + 3 * h / 4), (w / 4, h / 4))
             )
         )
@@ -125,7 +125,6 @@ def get_beamer_notes_for_page(pdf, page_number):
             line in title for line in miniature
         )
 
-        page = pdf.pageAtIndex_(page_number)
         (x, y), (w, h) = page.boundsForBox_(kPDFDisplayBoxMediaBox)
         w /= 2
         page.setBounds_forBox_(((x, y), (w, h)), kPDFDisplayBoxCropBox)
@@ -136,9 +135,9 @@ def get_beamer_notes_for_page(pdf, page_number):
     return notes
 
 
-def create_pdf_for_page(pdf, page_number):
+def create_pdf_for_page(page: PDFPage):
     page_pdf = PDFDocument.alloc().init()
-    page_pdf.insertPage_atIndex_(pdf.pageAtIndex_(page_number), 0)
+    page_pdf.insertPage_atIndex_(page, 0)
 
     f, pdf_path = tempfile.mkstemp(prefix="pdf2keynote", suffix=".pdf")
     page_pdf.writeToFile_(pdf_path)
@@ -219,27 +218,31 @@ def pdf_to_keynote(path_to_pdf, path_to_keynote=None):
     if not pdf:
         exit_usage("'%s' does not seem to be a pdf." % url.path(), 1)
 
-    if pdf.pageCount() > 0:
-        w, h = get_pdf_dimensions(pdf)
-        print(w, h)
+    if pdf.pageCount() <= 0:
+        exit_usage("'{url.path()}' has no pages.", 1)
 
-        create_keynote_document(w, h)
+    w, h = get_pdf_dimensions(pdf)
+    print(w, h)
 
-        for page_number in range(pdf.pageCount()):
-            slide = page_number + 1
-            if slide > 1:
-                create_empty_slide()
+    create_keynote_document(w, h)
 
-            pdf_path = create_pdf_for_page(pdf, page_number)
-            insert_image(slide, pdf_path)
-            os.remove(pdf_path)
+    for page_number in range(pdf.pageCount()):
+        slide = page_number + 1
+        if slide > 1:
+            create_empty_slide()
 
-            notes = get_beamer_notes_for_page(pdf, page_number)
-            insert_note(slide, notes)
+        page = pdf.pageAtIndex_(page_number)
 
-            process_annotations_for_page(pdf, page_number)
+        pdf_path = create_pdf_for_page(page)
+        insert_image(slide, pdf_path)
+        os.remove(pdf_path)
 
-            print((slide, notes, pdf_path))
+        notes = get_beamer_notes_for_page(page)
+        insert_note(slide, notes)
+
+        process_annotations_for_page(pdf, page_number)
+
+        print((slide, notes, pdf_path))
 
         # TODO select first slide
 
