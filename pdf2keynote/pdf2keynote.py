@@ -97,13 +97,22 @@ def do_apple_script(command, *args):
 def lines(selection):
     return [line.string() for line in selection.selectionsByLine() or []]
 
+def has_notes(pdf: PDFDocument) -> bool:
+    """
+     Checks if the PDF is likely to include a note slide. 
+     Only works between 21:18 and 21:9 format slides. So does not work for 1:1 or portait mode slides!
+    """
+    title_page = pdf.pageAtIndex_(0)
+    (x, y), (w, h) = title_page.boundsForBox_(kPDFDisplayBoxMediaBox)
+
+    return w / h > 21/9 # = 7/3 # Usual aspect ratios are 4/3 or 16/9, therefore 2 * 4/3 = 8/3 and 32/9 are the ratios for double-slides.
 
 def get_beamer_notes_for_page(pdf, page_number):
     title_page = pdf.pageAtIndex_(0)
     (x, y), (w, h) = title_page.boundsForBox_(kPDFDisplayBoxMediaBox)
 
     notes = ""
-    if w / h > 7 / 3:  # likely to be a two screens pdf
+    if has_notes(pdf): 
         # heuristic to guess template of note slide
         w /= 2
         title = lines(title_page.selectionForRect_(((x, y), (w, h))))
