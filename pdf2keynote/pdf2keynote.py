@@ -38,6 +38,8 @@ from Quartz import (
     kPDFDisplayBoxCropBox,
 )
 
+Dimensions = tuple[float, float]
+Bounds = tuple[Dimensions, Dimensions]
 
 def escape(notes):
     return '"{}"'.format(notes)
